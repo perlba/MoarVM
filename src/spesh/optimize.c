@@ -1851,8 +1851,14 @@ static MVMint64 has_handler_anns(MVMThreadContext *tc, MVMSpeshBB *bb) {
 static void mark_dead_writers(MVMThreadContext *tc, MVMSpeshGraph *g, MVMSpeshBB *dead_bb) {
     MVMSpeshIns *ins = dead_bb->first_ins;
     while (ins) {
+        MVMuint16 arg = 0;
         if ((ins->info->operands[0] & MVM_operand_rw_mask) == MVM_operand_write_reg)
             get_facts_direct(tc, g, ins->operands[0])->dead_writer = 1; 
+        for (arg = 0; arg < ins->info->num_operands; arg++) {
+            if ((ins->info->operands[arg] & MVM_operand_rw_mask) == MVM_operand_read_reg) {
+                get_facts_direct(tc, g, ins->operands[arg])->usages--;
+            }
+        }
         ins = ins->next;
     }
 }
@@ -1942,4 +1948,5 @@ void MVM_spesh_optimize(MVMThreadContext *tc, MVMSpeshGraph *g) {
     eliminate_unused_log_guards(tc, g);
     eliminate_pointless_gotos(tc, g);
     second_pass(tc, g, g->entry);
+    eliminate_dead_ins(tc, g);
 }
